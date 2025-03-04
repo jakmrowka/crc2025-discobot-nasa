@@ -1,4 +1,4 @@
-```markdown
+
 # CRC-NasaBot
 
 CRC-NasaBot to bot Discord napisany w Pythonie, który integruje się z API NASA i oferuje szereg komend umożliwiających pobieranie zdjęć astronomicznych, zdjęć z Marsa oraz zdjęć satelitarnych dla podanych lokalizacji. Dodatkowo bot umożliwia dodawanie obrazków do ulubionych oraz zarządzanie nimi poprzez reakcje.
@@ -112,7 +112,7 @@ CMD [ "python", "src/app.py" ]
 1. **Budowanie obrazu**
 
    ```bash
-   docker build -t gadzina13/gad_docker_crc_2025:latest -f src/Dockerfile src/
+   docker build -t NAME:latest -f src/Dockerfile src/
    ```
 
 2. **Uruchomienie kontenera**
@@ -120,7 +120,7 @@ CMD [ "python", "src/app.py" ]
    Upewnij się, że zmienne środowiskowe są ustawione, np.:
 
    ```bash
-   docker run -e BOT_TOKEN="twoj_token" -e NASA_API_KEY="twoj_klucz_api" -p 32025:32025 gadzina13/gad_docker_crc_2025:latest
+   docker run -e BOT_TOKEN="twoj_token" -e NASA_API_KEY="twoj_klucz_api" -p 32025:32025 NAME:latest
    ```
 
 ## Wdrożenie w Kubernetes z Helm
@@ -146,8 +146,6 @@ spec:
       labels:
         app: crc-bot
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: "minipc1"
       containers:
         - name: crc-bot
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
