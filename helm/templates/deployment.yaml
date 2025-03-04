@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crc-bot
+  labels:
+    app: crc-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: crc-bot
+  template:
+    metadata:
+      labels:
+        app: crc-bot
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: "minipc1"
+      containers:
+        - name: crc-bot
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: BOT_TOKEN
+              value: "{{ .Values.env.BOT_TOKEN }}"
+            - name: NASA_API_KEY
+              value: "{{ .Values.env.NASA_API_KEY }}"
+          ports:
+            - containerPort: {{ .Values.service.port }}

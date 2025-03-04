@@ -1,0 +1,21 @@
+image:
+  repository: "#{dockerhub-user}#/#{image_name}#"
+  tag: "latest"
+  pullPolicy: Always
+
+env:
+  BOT_TOKEN:  #{crc-discord-bot}#
+  NASA_API_KEY: #{nasa-api-key}#
+
+service:
+  type: ClusterIP
+  port: 32025
+
+# Zasoby (opcjonalne)
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi

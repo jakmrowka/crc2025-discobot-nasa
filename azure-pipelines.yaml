@@ -1,0 +1,180 @@
+trigger:
+  branches:
+    include:
+    - '*'
+
+
+parameters:
+- name: buildImage
+  displayName: 'Build Docker Image'
+  type: boolean
+  default: true
+- name: helmOperation
+  displayName: 'Helm Operation'
+  type: string
+  default: 'both'
+  values:
+    - install
+    - uninstall
+    - both
+
+variables:
+- group: credentials
+- name: dockerhub-user
+  value: 'gadzina13'
+- name: image_name
+  value: 'gad_docker_crc_2025'
+- name: tag
+  value: 'latest'
+- name: dockerImage
+  value: $(dockerhub-user)/$(image_name):$(tag)
+- name: buildImage
+  value: ${{ parameters.buildImage }}
+- name: helmOperation
+  value: ${{ parameters.helmOperation }}
+- name: repo_github
+  value: 'https://github.com/jakmrowka/crc2025-discobot-nasa'
+
+stages:
+- stage: Tests
+  condition: eq(variables.buildImage, true)
+  displayName: "Run tests and code formatting checks"
+  pool:
+    name: crc
+  jobs:
+  - job: RunTests
+    displayName: "Install dependencies, run tests and Black"
+    steps:
+      - checkout: self
+      - script: |
+          python3 -m venv venv
+          source venv/bin/activate
+          python3 -m pip install --upgrade pip
+          pip install -r ./src/requirements.txt
+        displayName: 'Install dependencies'
+      - script: |
+          source venv/bin/activate
+          pytest tests
+        displayName: 'Run tests'
+      - script: |
+          source venv/bin/activate
+          black --check src
+        displayName: 'Run Black code style check'
+- stage: Docker
+  condition: and(eq(variables.buildImage, true), succeeded('Tests'))
+  pool:
+    name: gads-agent-pool
+    demands:
+      - agent.name -equals gad-mini-pc2
+  jobs:
+  - job: BuildAndPushDocker
+    steps:
+    - checkout: self
+    - task: AzureKeyVault@2
+      inputs:
+        azureSubscription: 'Azure dla studentów(232fe18a-7562-4ae5-9507-29d2bde01130)'
+        KeyVaultName: 'credentialsforproject'
+        SecretsFilter: '*'
+        RunAsPreJob: true
+    - script: |
+        docker build -t $(dockerImage) -f src/Dockerfile src/
+      displayName: 'Build Docker Image'
+    - script: |
+        docker login -u $(dockerhub-username) -p $(dockerhub-password)
+      displayName: 'Login to Docker Hub'
+    - script: |
+        docker push $(dockerImage)
+      displayName: 'Push Docker Image to Docker Hub'
+
+- stage: microk8s
+  condition: always()
+  pool:
+    name: gads-agent-pool
+    demands:
+      - agent.name -equals gad-agent-pi4b
+  jobs:
+  - job: microK8sCred
+    condition: or(eq(variables['helmOperation'], 'install'), eq(variables['helmOperation'], 'both'))
+    steps:
+    - checkout: self
+    - task: AzureKeyVault@2
+      inputs:
+        azureSubscription: 'Azure dla studentów(232fe18a-7562-4ae5-9507-29d2bde01130)'
+        KeyVaultName: 'credentialsforproject'
+        SecretsFilter: '*'
+        RunAsPreJob: false
+    - task: qetza.replacetokens.replacetokens-task.replacetokens@3
+      inputs:
+        targetFiles: |
+          helm/values.yaml
+        encoding: 'auto'
+        writeBOM: true
+        actionOnMissing: 'fail'
+        keepToken: false
+        tokenPrefix: '#{'
+        tokenSuffix: '}#'
+        useLegacyPattern: false
+        enableTelemetry: true
+  - job: microK8sDeploy
+    dependsOn: microK8sCred
+    condition: always()
+    steps:
+    - checkout: none
+    - task: DownloadSecureFile@1
+      name: kubeconfig
+      inputs:
+        secureFile: 'klaster_config'
+    - script: |
+        echo "Using Helm to lint the chart..."
+        export KUBECONFIG=$(kubeconfig.secureFilePath)
+        helm lint helm/
+      displayName: 'Lint Helm Chart'
+    - script: |
+        export KUBECONFIG=$(kubeconfig.secureFilePath)
+        case "$(helmOperation)" in
+          "install")
+            echo "Installing with Helm..."
+            helm upgrade --install crc-bot helm/ --insecure-skip-tls-verify
+            ;;
+          "uninstall")
+            echo "Uninstalling Helm chart..."
+            helm uninstall crc-bot
+            ;;
+          "both")
+            echo "Reinstalling Helm chart..."
+            helm uninstall crc-bot
+            helm upgrade --install crc-bot helm/ --insecure-skip-tls-verify
+            ;;
+        esac
+      displayName: 'Helm Operations'
+
+- stage: GithubSync
+  condition: succeeded('microk8s')
+  pool:
+    name: gads-agent-pool
+  jobs:
+  - job: RepoSync
+    steps:
+    - script: |
+        echo Original: $(Build.Repository.Uri)
+        NEW_REPO_URI=$(echo $(Build.Repository.Uri) | sed 's/https:\/\/.*@/https:\/\//')
+        echo Modified: $NEW_REPO_URI
+        echo "##vso[task.setvariable variable=NEW_REPO_URI]$NEW_REPO_URI"
+      displayName: 'Modify Build Repository URI (Linux)'
+      condition: eq(variables['Agent.OS'], 'Linux')
+
+    - powershell: |
+        $originalUri = "$(Build.Repository.Uri)"
+        Write-Host "Original: $originalUri"
+        $modifiedUri = $originalUri -replace "https://.*@", "https://"
+        Write-Host "Modified: $modifiedUri"
+        echo "##vso[task.setvariable variable=NEW_REPO_URI]$modifiedUri"
+      displayName: 'Modify Build Repository URI (Windows)'
+      condition: eq(variables['Agent.OS'], 'Windows_NT')
+
+    - task: mirror-git-repository-vsts-task@1
+      inputs:
+        sourceGitRepositoryUri: '$(NEW_REPO_URI)'
+        sourceGitRepositoryPersonalAccessToken: '$(azure_pat)'
+        destinationGitRepositoryUri: '$(repo_github)'
+        destinationGitRepositoryPersonalAccessToken: '$(git_pat)'
