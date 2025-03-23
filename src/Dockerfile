@@ -1,11 +1,11 @@
-FROM python:3.9-slim
+FROM python:3.11-slim
 LABEL authors="gad"
 
 WORKDIR /src
-COPY requirements.txt requirements.txt
+COPY pyproject.toml pyproject.toml
 
 # Zainstaluj wymagane pakiety
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir .
 
 # Utwórz użytkownika bez uprawnień administracyjnych i ustaw odpowiednie uprawnienia dla katalogu /src
 RUN useradd -m appuser && chown -R appuser:appuser /src

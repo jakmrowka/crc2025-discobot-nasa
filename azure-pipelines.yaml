@@ -50,7 +50,7 @@ stages:
           python3 -m venv venv
           source venv/bin/activate
           python3 -m pip install --upgrade pip
-          pip install -r ./src/requirements.txt
+          pip install ./src[dev]
         displayName: 'Install dependencies'
       - script: |
           source venv/bin/activate

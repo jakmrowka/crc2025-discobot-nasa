@@ -1,0 +1,17 @@
+[project]
+name = "moja_aplikacja"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "discord.py",
+    "requests",
+    "imageio"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "flake8",
+    "black"
+]
