@@ -40,7 +40,7 @@ CRC-NasaBot to bot Discord napisany w Pythonie, który integruje się z API NASA
 
    ```bash
    pip install --upgrade pip
-   pip install -r requirements.txt
+   pip install ./src/.
    ```
 
 4. **Konfiguracja zmiennych środowiskowych**

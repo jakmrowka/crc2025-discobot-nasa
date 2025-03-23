@@ -10,8 +10,8 @@ RUN pip install --no-cache-dir .
 # Utwórz użytkownika bez uprawnień administracyjnych i ustaw odpowiednie uprawnienia dla katalogu /src
 RUN useradd -m appuser && chown -R appuser:appuser /src
 # Skopiuj skrypt do katalogu roboczego
-COPY . .
-RUN rm Dockerfile
+COPY ./src .
+
 #RUN apt-get update && apt-get install -y dnsutils libnss3
 # Ustaw użytkownika
 USER appuser
