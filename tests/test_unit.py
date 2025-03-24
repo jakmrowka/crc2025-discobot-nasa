@@ -4,22 +4,28 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime
 import io
 
-from src.app import safe_send, apod, dodaj, favorites, sent_images
+from src.app import (
+    apod,
+    mars,
+    zoom,
+    dodaj,
+    usun,
+    ulubione,
+    favorites,
+    safe_send,
+    sent_images,
+    on_reaction_add
+)
 
 class DummyCtx:
     def __init__(self):
         self.guild = None
         self.channel = MagicMock()
+        self.send = AsyncMock(return_value=MagicMock(id=999))
         self.author = MagicMock()
         self.author.id = 123
         self.message = MagicMock()
         self.message.reference = None
-
-    async def send(self, *args, **kwargs):
-        # Zwracamy obiekt wiadomości z minimalnymi atrybutami
-        msg = MagicMock()
-        msg.id = 999
-        return msg
 
 @pytest.mark.asyncio
 async def test_safe_send_returns_message():
@@ -27,6 +33,16 @@ async def test_safe_send_returns_message():
     # Testujemy, że funkcja safe_send zwraca obiekt wiadomości
     msg = await safe_send(ctx, "Test")
     assert msg is not None
+
+@pytest.mark.asyncio
+async def test_safe_send_no_permissions():
+    ctx = DummyCtx()
+    ctx.guild = MagicMock()
+    ctx.guild.me = MagicMock()
+    ctx.channel.permissions_for.return_value.send_messages = False
+
+    msg = await safe_send(ctx, "test")
+    assert msg is None
 
 @pytest.mark.asyncio
 async def test_apod_success():
@@ -51,6 +67,18 @@ async def test_apod_success():
         assert embed.title == "Test APOD"
 
 @pytest.mark.asyncio
+async def test_apod_api_error():
+    ctx = DummyCtx()
+
+    fake_response = MagicMock()
+    fake_response.status_code = 500
+
+    with patch("src.app.requests.get", return_value=fake_response):
+        await apod(ctx, date="2025-01-01")
+        # Zakładamy, że send zostało wywołane z komunikatem błędu
+        ctx.send.assert_called()
+
+@pytest.mark.asyncio
 async def test_dodaj_already_added():
     # Testujemy komendę !dodaj, gdy użytkownik próbuje dodać ten sam obrazek dwa razy.
     ctx = DummyCtx()
@@ -69,3 +97,26 @@ async def test_dodaj_already_added():
     await dodaj(ctx)
     # Lista ulubionych nie powinna mieć więcej niż jeden element
     assert len(favorites[ctx.author.id]) == 1
+
+@pytest.mark.asyncio
+async def test_dodaj_no_reference():
+    ctx = DummyCtx()
+    ctx.message.reference = None
+    await dodaj(ctx)
+    ctx.send.assert_called()
+
+@pytest.mark.asyncio
+async def test_dodaj_reference_not_found():
+    ctx = DummyCtx()
+    reply = MagicMock()
+    reply.id = 9999  # nie ma tego ID w sent_images
+    ctx.message.reference = MagicMock(resolved=reply)
+    await dodaj(ctx)
+    ctx.send.assert_called()
+
+@pytest.mark.asyncio
+async def test_ulubione_empty():
+    ctx = DummyCtx()
+    favorites[ctx.author.id] = []
+    await ulubione(ctx)
+    ctx.send.assert_called()
