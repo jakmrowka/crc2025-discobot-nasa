@@ -1,9 +1,0 @@
-discord.py
-requests
-imageio
-
-pytest
-pytest-asyncio
-
-flake8
-black
