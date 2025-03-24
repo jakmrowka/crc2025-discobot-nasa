@@ -3,23 +3,19 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 import io
 
-from src.app import (
-    apod,
-    mars,
-    zoom,
-    dodaj,
-    usun,
-    ulubione,
-    favorites,
-    sent_images,
-    on_reaction_add
-)
+from src.commands.apod import apod
+from src.commands.mars import mars
+from src.commands.zoom import zoom
+from src.commands.favorites import dodaj, usun, ulubione
+from src.config import favorites, sent_images
+from src.events.reactions import on_reaction_add
 
 class DummyCtx:
     def __init__(self, author_id=123):
         self.guild = None
         self.channel = MagicMock()
         self.author = MagicMock()
+        self.send = AsyncMock(return_value=MagicMock(id=999))
         self.author.id = author_id
         self.message = MagicMock()
         self.message.reference = None
