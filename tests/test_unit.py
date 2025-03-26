@@ -51,7 +51,7 @@ async def test_apod_success():
     fake_response.status_code = 200
     fake_response.json.return_value = fake_data
 
-    with patch("src.app.requests.get", return_value=fake_response) as mock_get:
+    with patch("src.bot.requests.get", return_value=fake_response) as mock_get:
         await apod(ctx, date="2025-02-18")
         # Sprawdzamy, czy zapisało wiadomość w sent_images (używamy stałego id 999 z DummyCtx.send)
         assert 999 in sent_images
