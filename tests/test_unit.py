@@ -32,7 +32,9 @@ async def test_safe_send_returns_message():
     ctx = DummyCtx()
     # Testujemy, że funkcja safe_send zwraca obiekt wiadomości
     msg = await safe_send(ctx, "Test")
+    ctx.send.assert_called_with("Test")
     assert msg is not None
+    assert msg.id == 999
 
 @pytest.mark.asyncio
 async def test_safe_send_no_permissions():
