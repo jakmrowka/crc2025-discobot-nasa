@@ -54,8 +54,14 @@ stages:
         displayName: 'Install dependencies'
       - script: |
           source venv/bin/activate
-          pytest tests
+          pytest tests --junitxml=results.xml
         displayName: 'Run tests'
+      - task: PublishTestResults@2
+        displayName: 'Publish test results'
+        inputs:
+          testResultsFormat: 'JUnit'
+          testResultsFiles: '**/results.xml'
+          failTaskOnFailedTests: true
       - script: |
           source venv/bin/activate
           black --check src
