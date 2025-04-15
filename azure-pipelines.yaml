@@ -54,7 +54,7 @@ stages:
         displayName: 'Install dependencies'
       - script: |
           source venv/bin/activate
-          pytest tests --junitxml=results.xml
+          pytest tests --junitxml=results.xml --cov=src --cov-report=xml:coverage.xml
         displayName: 'Run tests'
       - task: PublishTestResults@2
         displayName: 'Publish test results'
